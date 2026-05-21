@@ -100,7 +100,7 @@ export default function App() {
 
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "Onest, sans-serif", color: ACCENT, fontSize: 16 }}>
-      Загружаем данные из базы...
+      Загружаем данные...
     </div>
   );
 
