@@ -121,11 +121,11 @@ export default function App() {
   );
 
   return (
-    <div style={{ display: "flex", height: "100vh", fontFamily: "system-ui, -apple-system, sans-serif", fontSize: 14, color: "#1a1a1a" }}>
+    <div style={{ display: "flex", height: "100vh", fontFamily: "Onest, system-ui, sans-serif", fontSize: 14, color: "#1a1a1a" }}>
       {/* Sidebar */}
       <div style={sidebarStyle}>
         <div style={{ padding: "0 20px 20px", borderBottom: "1px solid #e8e8e6", marginBottom: 8 }}>
-          <div style={{ fontSize: 15, fontWeight: 500, color: "#1a1a1a" }}>Продажно</div>
+          <div style={{ fontSize: 15, fontWeight: 500, color: "#1a1a1a" }}>Рубка</div>
           <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>ТД Восток</div>
         </div>
         {navItems.map(n => (
