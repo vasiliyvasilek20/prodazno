@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { LayoutDashboard, Filter, Users, Bot, TrendingUp, AlertCircle, CheckCircle, Clock, Search, ChevronDown } from "lucide-react";
+import { LayoutDashboard, Filter, Users, Bot, TrendingUp, AlertCircle, CheckCircle, Clock, Search } from "lucide-react";
+import { supabase } from "./supabase";
 
 const ACCENT = "#005BFF";
 const COLORS = {
@@ -11,34 +12,6 @@ const COLORS = {
 
 const fmt = n => n.toLocaleString("ru-RU") + " ₽";
 const fmtM = n => (n / 1000000).toFixed(1).replace(".", ",") + " млн ₽";
-
-const managers = [
-  { id: 1, name: "Ирина Соколова", initials: "ИС", revenue: 1240000, plan: 58, deals: 7, conv: 18, status: "red" },
-  { id: 2, name: "Алексей Петров", initials: "АП", revenue: 3180000, plan: 106, deals: 14, conv: 34, status: "green" },
-  { id: 3, name: "Мария Козлова", initials: "МК", revenue: 2750000, plan: 91, deals: 11, conv: 29, status: "yellow" },
-  { id: 4, name: "Дмитрий Орлов", initials: "ДО", revenue: 3640000, plan: 121, deals: 16, conv: 38, status: "green" },
-  { id: 5, name: "Наталья Волкова", initials: "НВ", revenue: 2100000, plan: 87, deals: 9, conv: 27, status: "yellow" },
-  { id: 6, name: "Сергей Захаров", initials: "СЗ", revenue: 1890000, plan: 79, deals: 8, conv: 22, status: "yellow" },
-];
-
-const deals = [
-  { id: 1, name: "Поставка оборудования", client: "ООО «Металлпром»", sum: 1200000, stage: "Договор", mgr: "Алексей Петров", days: 3, status: "green" },
-  { id: 2, name: "Сервисный контракт", client: "АО «Стройгрупп»", sum: 450000, stage: "КП", mgr: "Ирина Соколова", days: 18, status: "red" },
-  { id: 3, name: "Комплект запчастей", client: "ЗАО «Авторесурс»", sum: 320000, stage: "Квалификация", mgr: "Мария Козлова", days: 5, status: "green" },
-  { id: 4, name: "Монтажные работы", client: "ООО «СтройМастер»", sum: 780000, stage: "КП", mgr: "Дмитрий Орлов", days: 21, status: "red" },
-  { id: 5, name: "Поставка расходников", client: "ИП Смирнов А.В.", sum: 95000, stage: "Оплата", mgr: "Наталья Волкова", days: 1, status: "green" },
-  { id: 6, name: "Технадзор объекта", client: "ООО «Инвест-Юг»", sum: 560000, stage: "Лид", mgr: "Сергей Захаров", days: 2, status: "green" },
-  { id: 7, name: "Электроавтоматика", client: "ПАО «Энергосеть»", sum: 2100000, stage: "Договор", mgr: "Алексей Петров", days: 7, status: "green" },
-  { id: 8, name: "Насосная станция", client: "МУП «Водоканал»", sum: 3400000, stage: "КП", mgr: "Дмитрий Орлов", days: 16, status: "red" },
-  { id: 9, name: "Ревизия склада", client: "ООО «Логистик-Центр»", sum: 180000, stage: "Квалификация", mgr: "Ирина Соколова", days: 8, status: "yellow" },
-  { id: 10, name: "Проект вентиляции", client: "ЗАО «ТехноПарк»", sum: 640000, stage: "КП", mgr: "Мария Козлова", days: 12, status: "yellow" },
-  { id: 11, name: "Газовое оборудование", client: "АО «РегионГаз»", sum: 1750000, stage: "Договор", mgr: "Дмитрий Орлов", days: 4, status: "green" },
-  { id: 12, name: "Охранная система", client: "ООО «Безопасность+»", sum: 390000, stage: "Лид", mgr: "Наталья Волкова", days: 1, status: "green" },
-  { id: 13, name: "Котельная установка", client: "ГУП «Теплосеть»", sum: 4200000, stage: "КП", mgr: "Алексей Петров", days: 19, status: "red" },
-  { id: 14, name: "Электрощитовые", client: "ООО «ПромЭлектро»", sum: 870000, stage: "Квалификация", mgr: "Сергей Захаров", days: 6, status: "green" },
-  { id: 15, name: "Диагностика линий", client: "АО «СвязьТелеком»", sum: 230000, stage: "Оплата", mgr: "Мария Козлова", days: 0, status: "green" },
-  { id: 16, name: "Пожарная автоматика", client: "ООО «Норматив»", sum: 510000, stage: "Договор", mgr: "Наталья Волкова", days: 9, status: "yellow" },
-];
 
 const stages = ["Лид", "Квалификация", "КП", "Договор", "Оплата"];
 const stageColors = ["#CCE0FF", "#99C0FF", "#4D94FF", "#005BFF", "#0040B3"];
@@ -51,8 +24,6 @@ const funnelData = [
   { name: "Оплата", count: 12, sum: 4100000 },
 ];
 
-const stuckDeals = deals.filter(d => d.days >= 14);
-
 const revenueData = Array.from({ length: 21 }, (_, i) => ({
   day: i + 1,
   revenue: Math.round((200000 + Math.random() * 400000) * (i < 10 ? 0.8 : i < 17 ? 1.1 : 1.3)),
@@ -61,8 +32,6 @@ const revenueData = Array.from({ length: 21 }, (_, i) => ({
 const chatHistory = [
   { role: "user", text: "Привет! Как дела с планом на апрель?" },
   { role: "ai", text: "Добрый день! По данным на сегодня, апрель идёт с отставанием. Общая выручка — 14 800 000 ₽ при плане 18 000 000 ₽, выполнение 82%. Лучший результат у Дмитрия Орлова — 121% плана. Под угрозой Ирина Соколова — 58% плана. Рекомендую провести встречу с ней сегодня." },
-  { role: "user", text: "Кто в зоне риска по сделкам?" },
-  { role: "ai", text: "Выявил 4 сделки с высоким риском срыва:\n\n1. «Котельная установка» (4 200 000 ₽) — 19 дней на КП\n2. «Монтажные работы» (780 000 ₽) — 21 день без движения\n3. «Насосная станция» (3 400 000 ₽) — 16 дней на КП\n4. «Сервисный контракт» (450 000 ₽) — 18 дней у Соколовой\n\nСовокупный риск — 8 830 000 ₽." },
 ];
 
 const statusDot = (status) => {
@@ -78,6 +47,9 @@ const Badge = ({ status, label }) => {
 
 export default function App() {
   const [screen, setScreen] = useState("dashboard");
+  const [managers, setManagers] = useState([]);
+  const [deals, setDeals] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [stageFilter, setStageFilter] = useState("Все");
   const [mgrFilter, setMgrFilter] = useState("Все");
   const [search, setSearch] = useState("");
@@ -85,6 +57,21 @@ export default function App() {
   const [chatInput, setChatInput] = useState("");
   const [localChat, setLocalChat] = useState(chatHistory);
   const chatRef = useRef(null);
+
+  useEffect(() => {
+    async function loadData() {
+      const { data: mgrs } = await supabase.from("managers").select("*");
+      const { data: dls } = await supabase.from("deals").select("*");
+      if (mgrs) setManagers(mgrs);
+      if (dls) setDeals(dls);
+      setLoading(false);
+    }
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
+  }, [localChat]);
 
   const navItems = [
     { id: "dashboard", label: "Дашборд", icon: <LayoutDashboard size={16} /> },
@@ -97,17 +84,13 @@ export default function App() {
   const filteredDeals = deals
     .filter(d => stageFilter === "Все" || d.stage === stageFilter)
     .filter(d => mgrFilter === "Все" || d.mgr === mgrFilter)
-    .filter(d => d.name.toLowerCase().includes(search.toLowerCase()) || d.client.toLowerCase().includes(search.toLowerCase()))
+    .filter(d => d.name.toLowerCase().includes(search.toLowerCase()) || d.client?.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => sortDeals === "sum" ? b.sum - a.sum : b.days - a.days);
-
-  useEffect(() => {
-    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
-  }, [localChat]);
 
   const kpiCard = (label, value, sub, status, delta) => (
     <div style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 12, padding: "18px 20px", flex: 1, boxShadow: "0 1px 4px rgba(0,91,255,0.06)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-        <span style={{ fontSize: 12, color: "#888", letterSpacing: 0.2 }}>{label}</span>
+        <span style={{ fontSize: 12, color: "#888" }}>{label}</span>
         {statusDot(status)}
       </div>
       <div style={{ fontSize: 26, fontWeight: 700, color: "#0A0A0A", lineHeight: 1.1 }}>{value}</div>
@@ -115,12 +98,17 @@ export default function App() {
     </div>
   );
 
+  if (loading) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "Onest, sans-serif", color: ACCENT, fontSize: 16 }}>
+      Загружаем данные из базы...
+    </div>
+  );
+
   return (
     <div style={{ display: "flex", height: "100vh", fontFamily: "Onest, system-ui, sans-serif", fontSize: 14, color: "#0A0A0A", background: "#F4F7FF" }}>
-      {/* Sidebar */}
-      <div style={{ width: 220, minWidth: 220, background: "#fff", borderRight: "1px solid #E8EEFF", display: "flex", flexDirection: "column", padding: "0" }}>
+      <div style={{ width: 220, minWidth: 220, background: "#fff", borderRight: "1px solid #E8EEFF", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid #E8EEFF" }}>
-          <div style={{ fontSize: 18, fontWeight: 800, color: ACCENT, letterSpacing: -0.5 }}>Рубка</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: ACCENT }}>Рубка</div>
           <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>ТД Восток</div>
         </div>
         <div style={{ padding: "8px 10px", flex: 1 }}>
@@ -139,54 +127,48 @@ export default function App() {
         </div>
         <div style={{ padding: "14px 20px", borderTop: "1px solid #E8EEFF" }}>
           <div style={{ fontSize: 11, color: "#bbb" }}>Апрель 2026</div>
-          <div style={{ fontSize: 11, color: "#ccc", marginTop: 2 }}>Обновлено 08:14</div>
+          <div style={{ fontSize: 11, color: "#00A650", marginTop: 2 }}>● Live из Supabase</div>
         </div>
       </div>
 
-      {/* Content */}
       <div style={{ flex: 1, overflow: "auto", padding: 28 }}>
-        {screen === "dashboard" && <Dashboard kpiCard={kpiCard} />}
-        {screen === "funnel" && <FunnelScreen />}
-        {screen === "deals" && (
-          <DealsScreen
-            filteredDeals={filteredDeals} stageFilter={stageFilter} setStageFilter={setStageFilter}
-            mgrFilter={mgrFilter} setMgrFilter={setMgrFilter}
-            search={search} setSearch={setSearch}
-            sortDeals={sortDeals} setSortDeals={setSortDeals}
-          />
-        )}
-        {screen === "managers" && <ManagersScreen />}
+        {screen === "dashboard" && <Dashboard kpiCard={kpiCard} managers={managers} deals={deals} />}
+        {screen === "funnel" && <FunnelScreen deals={deals} />}
+        {screen === "deals" && <DealsScreen filteredDeals={filteredDeals} stageFilter={stageFilter} setStageFilter={setStageFilter} mgrFilter={mgrFilter} setMgrFilter={setMgrFilter} search={search} setSearch={setSearch} sortDeals={sortDeals} setSortDeals={setSortDeals} managers={managers} deals={deals} />}
+        {screen === "managers" && <ManagersScreen managers={managers} />}
         {screen === "ai" && <AIScreen localChat={localChat} setLocalChat={setLocalChat} chatInput={chatInput} setChatInput={setChatInput} chatRef={chatRef} />}
       </div>
     </div>
   );
 }
 
-function Dashboard({ kpiCard }) {
+function Dashboard({ kpiCard, managers, deals }) {
+  const totalRevenue = managers.reduce((s, m) => s + m.revenue, 0);
+  const avgPlan = managers.length ? Math.round(managers.reduce((s, m) => s + m.plan, 0) / managers.length) : 0;
+  const stuckDeals = deals.filter(d => d.days >= 14);
+  const riskAmount = stuckDeals.reduce((s, d) => s + d.sum, 0);
+
   const alerts = [
-    { status: "red", icon: <AlertCircle size={14} />, text: "Менеджер Соколова просела на 42% от плана — требуется встреча сегодня" },
-    { status: "red", icon: <AlertCircle size={14} />, text: "4 сделки зависли на этапе КП больше 14 дней, риск на 8,8 млн ₽" },
-    { status: "yellow", icon: <Clock size={14} />, text: "При текущем темпе квартальный план будет выполнен на 87%" },
-    { status: "green", icon: <CheckCircle size={14} />, text: "Орлов закрыл план досрочно — 121%, можно загрузить новыми лидами" },
+    { status: "red", icon: <AlertCircle size={14} />, text: `${stuckDeals.length} сделок зависли больше 14 дней, риск на ${fmtM(riskAmount)}` },
+    { status: "yellow", icon: <Clock size={14} />, text: `При текущем темпе квартальный план будет выполнен на ${avgPlan}%` },
+    { status: "green", icon: <CheckCircle size={14} />, text: `Данные загружены из Supabase — ${managers.length} менеджеров, ${deals.length} сделок` },
   ];
 
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Сводка дня</h1>
-        <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>ТД Восток · Апрель 2026 · обновлено 08:14</div>
+        <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>ТД Восток · Апрель 2026 · данные из базы</div>
       </div>
-
       <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
-        {kpiCard("Выручка месяца", "14,8 млн ₽", "план 18 млн ₽", "yellow", +8)}
-        {kpiCard("План выполнен", "82%", "цель 100%", "yellow", -5)}
-        {kpiCard("Средний чек", "925 000 ₽", "16 сделок", "green", +12)}
-        {kpiCard("Конверсия воронки", "14,3%", "лид → оплата", "yellow", -2)}
+        {kpiCard("Выручка месяца", fmtM(totalRevenue), `план 18 млн ₽`, "yellow", +8)}
+        {kpiCard("План выполнен", avgPlan + "%", "цель 100%", avgPlan >= 100 ? "green" : "yellow", -5)}
+        {kpiCard("Сделок в работе", deals.length, `${stuckDeals.length} зависших`, "green", +12)}
+        {kpiCard("Менеджеров", managers.length, "активных", "green", 0)}
       </div>
-
       <div style={{ display: "flex", gap: 16 }}>
         <div style={{ flex: 2 }}>
-          <div style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 12, padding: "18px 18px 8px", boxShadow: "0 1px 4px rgba(0,91,255,0.06)" }}>
+          <div style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 12, padding: "18px 18px 8px" }}>
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14, color: "#444" }}>Выручка по дням, апрель 2026</div>
             <ResponsiveContainer width="100%" height={180}>
               <AreaChart data={revenueData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
@@ -204,20 +186,16 @@ function Dashboard({ kpiCard }) {
             </ResponsiveContainer>
           </div>
         </div>
-
         <div style={{ flex: 1 }}>
-          <div style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 12, padding: "18px", boxShadow: "0 1px 4px rgba(0,91,255,0.06)" }}>
+          <div style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 12, padding: 18 }}>
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14, color: "#444" }}>Что важно сегодня</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {alerts.map((a, i) => {
-                const iconColor = a.status === "green" ? COLORS.green : a.status === "yellow" ? COLORS.yellow : COLORS.red;
-                return (
-                  <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", paddingBottom: 10, borderBottom: i < alerts.length - 1 ? "1px solid #F0F4FF" : "none" }}>
-                    <span style={{ color: iconColor, marginTop: 1, flexShrink: 0 }}>{a.icon}</span>
-                    <div style={{ fontSize: 12.5, color: "#333", lineHeight: 1.5 }}>{a.text}</div>
-                  </div>
-                );
-              })}
+              {alerts.map((a, i) => (
+                <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", paddingBottom: 10, borderBottom: i < alerts.length - 1 ? "1px solid #F0F4FF" : "none" }}>
+                  <span style={{ color: a.status === "green" ? COLORS.green : a.status === "yellow" ? COLORS.yellow : COLORS.red, marginTop: 1, flexShrink: 0 }}>{a.icon}</span>
+                  <div style={{ fontSize: 12.5, color: "#333", lineHeight: 1.5 }}>{a.text}</div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -226,8 +204,9 @@ function Dashboard({ kpiCard }) {
   );
 }
 
-function FunnelScreen() {
+function FunnelScreen({ deals }) {
   const maxCount = funnelData[0].count;
+  const stuckDeals = deals.filter(d => d.days >= 14);
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
@@ -235,7 +214,7 @@ function FunnelScreen() {
         <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>Апрель 2026 · все менеджеры</div>
       </div>
       <div style={{ display: "flex", gap: 16 }}>
-        <div style={{ flex: 2, background: "#fff", border: "1px solid #E8EEFF", borderRadius: 12, padding: 24, boxShadow: "0 1px 4px rgba(0,91,255,0.06)" }}>
+        <div style={{ flex: 2, background: "#fff", border: "1px solid #E8EEFF", borderRadius: 12, padding: 24 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 0, alignItems: "center" }}>
             {funnelData.map((s, i) => {
               const w = 40 + (s.count / maxCount) * 56;
@@ -251,15 +230,12 @@ function FunnelScreen() {
               );
             })}
           </div>
-          <div style={{ display: "flex", justifyContent: "center", gap: 24, marginTop: 20, fontSize: 12, color: "#888" }}>
-            <span>Итоговая конверсия: <b style={{ color: "#0A0A0A" }}>14,3%</b></span>
-            <span>Средний цикл: <b style={{ color: "#0A0A0A" }}>28 дней</b></span>
-          </div>
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 12, padding: 18, boxShadow: "0 1px 4px rgba(0,91,255,0.06)" }}>
+          <div style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 12, padding: 18 }}>
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14, color: "#444" }}>Застрявшие сделки</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {stuckDeals.length === 0 && <div style={{ fontSize: 13, color: "#aaa" }}>Нет застрявших сделок</div>}
               {stuckDeals.map(d => (
                 <div key={d.id} style={{ paddingBottom: 10, borderBottom: "1px solid #F0F4FF" }}>
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{d.name}</div>
@@ -278,7 +254,7 @@ function FunnelScreen() {
   );
 }
 
-function DealsScreen({ filteredDeals, stageFilter, setStageFilter, mgrFilter, setMgrFilter, search, setSearch, sortDeals, setSortDeals }) {
+function DealsScreen({ filteredDeals, stageFilter, setStageFilter, mgrFilter, setMgrFilter, search, setSearch, sortDeals, setSortDeals, managers, deals }) {
   const mgrNames = ["Все", ...Array.from(new Set(managers.map(m => m.name)))];
   const selStyle = { fontSize: 12, padding: "6px 10px", border: "1px solid #E8EEFF", borderRadius: 8, background: "#fff", color: "#333", cursor: "pointer" };
 
@@ -302,13 +278,13 @@ function DealsScreen({ filteredDeals, stageFilter, setStageFilter, mgrFilter, se
         </select>
         <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
           {[["sum", "По сумме"], ["days", "По дням"]].map(([val, label]) => (
-            <button key={val} onClick={() => setSortDeals(val)} style={{ fontSize: 12, padding: "6px 12px", border: "1px solid #E8EEFF", borderRadius: 8, background: sortDeals === val ? ACCENT : "#fff", color: sortDeals === val ? "#fff" : "#555", cursor: "pointer", fontWeight: sortDeals === val ? 600 : 400 }}>
+            <button key={val} onClick={() => setSortDeals(val)} style={{ fontSize: 12, padding: "6px 12px", border: "1px solid #E8EEFF", borderRadius: 8, background: sortDeals === val ? ACCENT : "#fff", color: sortDeals === val ? "#fff" : "#555", cursor: "pointer" }}>
               {label}
             </button>
           ))}
         </div>
       </div>
-      <div style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,91,255,0.06)" }}>
+      <div style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 12, overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ background: "#F4F7FF" }}>
@@ -318,15 +294,15 @@ function DealsScreen({ filteredDeals, stageFilter, setStageFilter, mgrFilter, se
             </tr>
           </thead>
           <tbody>
-            {filteredDeals.map((d, i) => (
-              <tr key={d.id} style={{ borderBottom: "1px solid #F0F4FF", background: "#fff" }}>
+            {filteredDeals.map((d) => (
+              <tr key={d.id} style={{ borderBottom: "1px solid #F0F4FF" }}>
                 <td style={{ padding: "10px 14px", fontWeight: 600 }}>{d.name}</td>
                 <td style={{ padding: "10px 14px", color: "#666" }}>{d.client}</td>
                 <td style={{ padding: "10px 14px", fontWeight: 700, color: ACCENT }}>{fmt(d.sum)}</td>
                 <td style={{ padding: "10px 14px" }}>
                   <span style={{ fontSize: 11, background: "#EEF3FF", color: ACCENT, padding: "2px 10px", borderRadius: 20, fontWeight: 600 }}>{d.stage}</span>
                 </td>
-                <td style={{ padding: "10px 14px", color: "#666" }}>{d.mgr.split(" ")[0]} {d.mgr.split(" ")[1]?.[0]}.</td>
+                <td style={{ padding: "10px 14px", color: "#666" }}>{d.mgr}</td>
                 <td style={{ padding: "10px 14px" }}>
                   <span style={{ fontSize: 11, color: d.days >= 14 ? COLORS.red : d.days >= 7 ? COLORS.yellow : COLORS.green, fontWeight: 600 }}>{d.days}</span>
                 </td>
@@ -340,7 +316,7 @@ function DealsScreen({ filteredDeals, stageFilter, setStageFilter, mgrFilter, se
   );
 }
 
-function ManagersScreen() {
+function ManagersScreen({ managers }) {
   const sorted = [...managers].sort((a, b) => b.revenue - a.revenue);
   const statusLabel = { green: "норма", yellow: "внимание", red: "действие" };
 
@@ -348,16 +324,16 @@ function ManagersScreen() {
     <div>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Менеджеры</h1>
-        <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>Апрель 2026 · сортировка по выручке</div>
+        <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>Апрель 2026 · {managers.length} человек · из Supabase</div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
         {sorted.map((m, i) => (
-          <div key={m.id} style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 12, padding: "18px 18px 14px", boxShadow: "0 1px 4px rgba(0,91,255,0.06)" }}>
+          <div key={m.id} style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 12, padding: "18px 18px 14px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
               <div style={{ width: 40, height: 40, borderRadius: 12, background: "#EEF3FF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: ACCENT }}>{m.initials}</div>
               <div>
                 <div style={{ fontSize: 13.5, fontWeight: 600 }}>{m.name}</div>
-                <Badge status={m.status} label={statusLabel[m.status]} />
+                <Badge status={m.status} label={statusLabel[m.status] || m.status} />
               </div>
               {i === 0 && <span style={{ marginLeft: "auto", fontSize: 11, color: COLORS.greenText, background: COLORS.greenBg, padding: "2px 8px", borderRadius: 20, fontWeight: 600 }}>★ Лидер</span>}
             </div>
@@ -365,7 +341,7 @@ function ManagersScreen() {
               {[["Выручка", fmt(m.revenue)], ["План", m.plan + "%"], ["Сделки", m.deals], ["Конверсия", m.conv + "%"]].map(([label, val]) => (
                 <div key={label} style={{ background: "#F4F7FF", borderRadius: 8, padding: "8px 10px" }}>
                   <div style={{ fontSize: 10, color: "#aaa", marginBottom: 2 }}>{label}</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#0A0A0A" }}>{val}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>{val}</div>
                 </div>
               ))}
             </div>
@@ -385,9 +361,8 @@ function ManagersScreen() {
   );
 }
 
-function AIScreen({ localChat, setLocalChat, chatInput, setChatInput, chatRef }) {
+function AIScreen({ localChat, chatInput, setChatInput, chatRef }) {
   const quickBtns = ["Разобрать вчерашний день", "Кто в зоне риска?", "Что с воронкой?", "Прогноз до конца месяца"];
-
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 56px)", maxWidth: 700, margin: "0 auto" }}>
       <div style={{ marginBottom: 20 }}>
@@ -407,23 +382,13 @@ function AIScreen({ localChat, setLocalChat, chatInput, setChatInput, chatRef })
                 <Bot size={16} color={ACCENT} />
               </div>
             )}
-            <div style={{
-              maxWidth: "80%", padding: "10px 14px", borderRadius: 12, fontSize: 13, lineHeight: 1.6,
-              background: msg.role === "user" ? ACCENT : "#fff",
-              color: msg.role === "user" ? "#fff" : "#0A0A0A",
-              border: msg.role === "ai" ? "1px solid #E8EEFF" : "none",
-              whiteSpace: "pre-line",
-            }}>{msg.text}</div>
+            <div style={{ maxWidth: "80%", padding: "10px 14px", borderRadius: 12, fontSize: 13, lineHeight: 1.6, background: msg.role === "user" ? ACCENT : "#fff", color: msg.role === "user" ? "#fff" : "#0A0A0A", border: msg.role === "ai" ? "1px solid #E8EEFF" : "none", whiteSpace: "pre-line" }}>{msg.text}</div>
           </div>
         ))}
       </div>
       <div style={{ display: "flex", gap: 8, paddingTop: 12, borderTop: "1px solid #E8EEFF" }}>
-        <input value={chatInput} onChange={e => setChatInput(e.target.value)}
-          placeholder="Спросите что-нибудь о ваших продажах..."
-          style={{ flex: 1, fontSize: 13, padding: "10px 14px", border: "1px solid #E8EEFF", borderRadius: 10, outline: "none", color: "#333" }} />
-        <button style={{ padding: "10px 20px", background: ACCENT, color: "#fff", border: "none", borderRadius: 10, fontSize: 13, cursor: "pointer", fontWeight: 600 }}>
-          Отправить
-        </button>
+        <input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Спросите что-нибудь о ваших продажах..." style={{ flex: 1, fontSize: 13, padding: "10px 14px", border: "1px solid #E8EEFF", borderRadius: 10, outline: "none", color: "#333" }} />
+        <button style={{ padding: "10px 20px", background: ACCENT, color: "#fff", border: "none", borderRadius: 10, fontSize: 13, cursor: "pointer", fontWeight: 600 }}>Отправить</button>
       </div>
     </div>
   );
