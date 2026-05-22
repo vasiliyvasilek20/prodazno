@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { LayoutDashboard, Filter, Users, Bot, TrendingUp, AlertCircle, CheckCircle, Clock, Search } from "lucide-react";
+import { LayoutDashboard, Filter, Users, Bot, TrendingUp, AlertCircle, CheckCircle, Clock, Search, LogOut, Mail, Lock } from "lucide-react";
 import { supabase } from "./supabase";
 
 const ACCENT = "#005BFF";
@@ -30,9 +30,17 @@ const revenueData = Array.from({ length: 21 }, (_, i) => ({
 }));
 
 const chatHistory = [
-  { role: "user", text: "Привет! Как дела с планом на апрель?" },
-  { role: "ai", text: "Добрый день! По данным на сегодня, апрель идёт с отставанием. Общая выручка — 14 800 000 ₽ при плане 18 000 000 ₽, выполнение 82%. Лучший результат у Дмитрия Орлова — 121% плана. Под угрозой Ирина Соколова — 58% плана. Рекомендую провести встречу с ней сегодня." },
+  { role: "user", text: "Привет! Как дела с планом?" },
+  { role: "ai", text: "Добрый день! По данным на сегодня план выполняется на 82%. Есть 4 зависших сделки." },
 ];
+
+const validatePassword = (pwd) => {
+  if (pwd.length < 8) return "Минимум 8 символов";
+  if (!/[A-Z]/.test(pwd)) return "Нужна хотя бы одна заглавная буква";
+  if (!/[0-9]/.test(pwd)) return "Нужна хотя бы одна цифра";
+  if (!/[!@#$%^&*]/.test(pwd)) return "Нужен спецсимвол: !@#$%^&*";
+  return null;
+};
 
 const statusDot = (status) => {
   const bg = status === "green" ? COLORS.green : status === "yellow" ? COLORS.yellow : COLORS.red;
@@ -45,11 +53,155 @@ const Badge = ({ status, label }) => {
   return <span style={{ background: bg, color, fontSize: 11, padding: "2px 8px", borderRadius: 20, fontWeight: 600 }}>{label}</span>;
 };
 
+const inputStyle = {
+  width: "100%", padding: "10px 12px", border: "1.5px solid #E8EEFF",
+  borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box",
+  fontFamily: "Onest, sans-serif", color: "#0A0A0A",
+};
+
+// ─── AUTH SCREEN ────────────────────────────────────────────
+function AuthScreen({ setUser, onLoadData }) {
+  const [mode, setMode] = useState("login"); // login | register | reset
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [msg, setMsg] = useState({ text: "", type: "" });
+  const [loading, setLoading] = useState(false);
+
+  const showMsg = (text, type = "error") => setMsg({ text, type });
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    if (!email || !password) return showMsg("Введите email и пароль");
+    setLoading(true);
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (error) return showMsg("Неверный email или пароль");
+    setUser(data.user);
+    onLoadData(data.user.id);
+  }
+
+  async function handleRegister(e) {
+    e.preventDefault();
+    if (!email) return showMsg("Введите email");
+    const pwdErr = validatePassword(password);
+    if (pwdErr) return showMsg(pwdErr);
+    if (password !== confirm) return showMsg("Пароли не совпадают");
+    setLoading(true);
+    const { error } = await supabase.auth.signUp({ email, password });
+    setLoading(false);
+    if (error) return showMsg(error.message);
+    showMsg("Письмо подтверждения отправлено! Проверьте почту.", "success");
+    setPassword(""); setConfirm("");
+  }
+
+  async function handleReset(e) {
+    e.preventDefault();
+    if (!email) return showMsg("Введите email");
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    });
+    setLoading(false);
+    if (error) return showMsg(error.message);
+    showMsg("Ссылка для сброса пароля отправлена на почту!", "success");
+  }
+
+  return (
+    <div style={{ display: "flex", height: "100vh", alignItems: "center", justifyContent: "center", background: "#F4F7FF", fontFamily: "Onest, sans-serif" }}>
+      <div style={{ background: "#fff", padding: 40, borderRadius: 20, boxShadow: "0 8px 32px rgba(0,91,255,0.12)", width: 400 }}>
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <div style={{ fontSize: 30, fontWeight: 800, color: ACCENT }}>Рубка</div>
+          <div style={{ fontSize: 13, color: "#aaa", marginTop: 6 }}>Дашборд для отдела продаж</div>
+        </div>
+
+        {mode !== "reset" && (
+          <div style={{ display: "flex", gap: 8, marginBottom: 24, background: "#F4F7FF", borderRadius: 10, padding: 4 }}>
+            {[["login", "Вход"], ["register", "Регистрация"]].map(([m, l]) => (
+              <button key={m} onClick={() => { setMode(m); setMsg({ text: "", type: "" }); }} style={{
+                flex: 1, padding: "8px 0", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13,
+                background: mode === m ? "#fff" : "transparent",
+                color: mode === m ? ACCENT : "#888",
+                boxShadow: mode === m ? "0 1px 4px rgba(0,91,255,0.1)" : "none",
+              }}>{l}</button>
+            ))}
+          </div>
+        )}
+
+        {mode === "reset" && (
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 20, color: "#0A0A0A" }}>Сброс пароля</div>
+        )}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 12, color: "#666", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+              <Mail size={13} /> Email
+            </label>
+            <input value={email} onChange={e => setEmail(e.target.value)} placeholder="your@email.com" style={inputStyle} />
+          </div>
+
+          {mode !== "reset" && (
+            <div>
+              <label style={{ fontSize: 12, color: "#666", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                <Lock size={13} /> Пароль
+              </label>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" style={inputStyle} />
+              {mode === "register" && (
+                <div style={{ fontSize: 11, color: "#aaa", marginTop: 5 }}>
+                  8+ символов · заглавная буква · цифра · спецсимвол (!@#$%^&*)
+                </div>
+              )}
+            </div>
+          )}
+
+          {mode === "register" && (
+            <div>
+              <label style={{ fontSize: 12, color: "#666", marginBottom: 6, display: "block" }}>Подтверждение пароля</label>
+              <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="••••••••" style={inputStyle} />
+            </div>
+          )}
+
+          {msg.text && (
+            <div style={{
+              padding: "10px 14px", borderRadius: 8, fontSize: 13,
+              background: msg.type === "success" ? COLORS.greenBg : COLORS.redBg,
+              color: msg.type === "success" ? COLORS.greenText : COLORS.redText,
+            }}>{msg.text}</div>
+          )}
+
+          <button
+            onClick={mode === "login" ? handleLogin : mode === "register" ? handleRegister : handleReset}
+            disabled={loading}
+            style={{ padding: "12px 0", background: ACCENT, color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", opacity: loading ? 0.7 : 1 }}>
+            {loading ? "Загрузка..." : mode === "login" ? "Войти" : mode === "register" ? "Зарегистрироваться" : "Отправить ссылку"}
+          </button>
+
+          {mode === "login" && (
+            <button onClick={() => { setMode("reset"); setMsg({ text: "", type: "" }); }}
+              style={{ background: "none", border: "none", color: "#aaa", fontSize: 12, cursor: "pointer", textAlign: "center" }}>
+              Забыли пароль?
+            </button>
+          )}
+
+          {mode === "reset" && (
+            <button onClick={() => { setMode("login"); setMsg({ text: "", type: "" }); }}
+              style={{ background: "none", border: "none", color: ACCENT, fontSize: 12, cursor: "pointer", textAlign: "center", fontWeight: 600 }}>
+              ← Вернуться к входу
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── MAIN APP ───────────────────────────────────────────────
 export default function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [screen, setScreen] = useState("dashboard");
   const [managers, setManagers] = useState([]);
   const [deals, setDeals] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [stageFilter, setStageFilter] = useState("Все");
   const [mgrFilter, setMgrFilter] = useState("Все");
   const [search, setSearch] = useState("");
@@ -59,15 +211,30 @@ export default function App() {
   const chatRef = useRef(null);
 
   useEffect(() => {
-    async function loadData() {
-      const { data: mgrs } = await supabase.from("managers").select("*");
-      const { data: dls } = await supabase.from("deals").select("*");
-      if (mgrs) setManagers(mgrs);
-      if (dls) setDeals(dls);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const u = session?.user || null;
+      setUser(u);
+      if (u) loadData(u.id);
       setLoading(false);
-    }
-    loadData();
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const u = session?.user || null;
+      setUser(u);
+      if (u) loadData(u.id);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  async function loadData(userId) {
+    // Показываем данные компании — менеджеры и сделки без фильтра по пользователю
+    // (т.к. все менеджеры принадлежат одной компании-клиенту)
+    const { data: mgrs } = await supabase.from("managers").select("*");
+    const { data: dls } = await supabase.from("deals").select("*");
+    if (mgrs) setManagers(mgrs);
+    if (dls) setDeals(dls);
+  }
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
@@ -94,22 +261,25 @@ export default function App() {
         {statusDot(status)}
       </div>
       <div style={{ fontSize: 26, fontWeight: 700, color: "#0A0A0A", lineHeight: 1.1 }}>{value}</div>
-      <div style={{ fontSize: 12, color: "#aaa", marginTop: 6 }}>{sub} · <span style={{ color: delta > 0 ? COLORS.green : COLORS.red, fontWeight: 600 }}>{delta > 0 ? "+" : ""}{delta}% vs март</span></div>
+      <div style={{ fontSize: 12, color: "#aaa", marginTop: 6 }}>{sub} {delta !== 0 && <span style={{ color: delta > 0 ? COLORS.green : COLORS.red, fontWeight: 600 }}>{delta > 0 ? "+" : ""}{delta}% vs март</span>}</div>
     </div>
   );
 
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "Onest, sans-serif", color: ACCENT, fontSize: 16 }}>
-      Загружаем данные...
+      Загружаем...
     </div>
   );
 
+  if (!user) return <AuthScreen setUser={setUser} onLoadData={loadData} />;
+
   return (
     <div style={{ display: "flex", height: "100vh", fontFamily: "Onest, system-ui, sans-serif", fontSize: 14, color: "#0A0A0A", background: "#F4F7FF" }}>
+      {/* Sidebar */}
       <div style={{ width: 220, minWidth: 220, background: "#fff", borderRight: "1px solid #E8EEFF", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid #E8EEFF" }}>
           <div style={{ fontSize: 18, fontWeight: 800, color: ACCENT }}>Рубка</div>
-          <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>ТД Восток</div>
+          <div style={{ fontSize: 11, color: "#aaa", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.email}</div>
         </div>
         <div style={{ padding: "8px 10px", flex: 1 }}>
           {navItems.map(n => (
@@ -126,11 +296,14 @@ export default function App() {
           ))}
         </div>
         <div style={{ padding: "14px 20px", borderTop: "1px solid #E8EEFF" }}>
-          <div style={{ fontSize: 11, color: "#bbb" }}>Апрель 2026</div>
-          <div style={{ fontSize: 11, color: "#00A650", marginTop: 2 }}>● Live из Supabase</div>
+          <button onClick={async () => { await supabase.auth.signOut(); setUser(null); setManagers([]); setDeals([]); }}
+            style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: COLORS.redBg, color: COLORS.red, border: "none", borderRadius: 8, width: "100%", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+            <LogOut size={14} /> Выйти из аккаунта
+          </button>
         </div>
       </div>
 
+      {/* Content */}
       <div style={{ flex: 1, overflow: "auto", padding: 28 }}>
         {screen === "dashboard" && <Dashboard kpiCard={kpiCard} managers={managers} deals={deals} />}
         {screen === "funnel" && <FunnelScreen deals={deals} />}
@@ -142,29 +315,30 @@ export default function App() {
   );
 }
 
+// ─── DASHBOARD ──────────────────────────────────────────────
 function Dashboard({ kpiCard, managers, deals }) {
-  const totalRevenue = managers.reduce((s, m) => s + m.revenue, 0);
-  const avgPlan = managers.length ? Math.round(managers.reduce((s, m) => s + m.plan, 0) / managers.length) : 0;
+  const totalRevenue = managers.reduce((s, m) => s + (m.revenue || 0), 0);
+  const avgPlan = managers.length ? Math.round(managers.reduce((s, m) => s + (m.plan || 0), 0) / managers.length) : 0;
   const stuckDeals = deals.filter(d => d.days >= 14);
-  const riskAmount = stuckDeals.reduce((s, d) => s + d.sum, 0);
+  const riskAmount = stuckDeals.reduce((s, d) => s + (d.sum || 0), 0);
 
   const alerts = [
-    { status: "red", icon: <AlertCircle size={14} />, text: `${stuckDeals.length} сделок зависли больше 14 дней, риск на ${fmtM(riskAmount)}` },
-    { status: "yellow", icon: <Clock size={14} />, text: `При текущем темпе квартальный план будет выполнен на ${avgPlan}%` },
-    { status: "green", icon: <CheckCircle size={14} />, text: `Данные загружены из Supabase — ${managers.length} менеджеров, ${deals.length} сделок` },
-  ];
+    stuckDeals.length > 0 && { status: "red", icon: <AlertCircle size={14} />, text: `${stuckDeals.length} сделок зависло больше 14 дней — риск ${fmtM(riskAmount)}` },
+    avgPlan < 100 && { status: "yellow", icon: <Clock size={14} />, text: `Средний план по команде: ${avgPlan}%` },
+    { status: "green", icon: <CheckCircle size={14} />, text: `Активных менеджеров: ${managers.length} · Сделок: ${deals.length}` },
+  ].filter(Boolean);
 
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Сводка дня</h1>
-        <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>ТД Восток · Апрель 2026 · данные из базы</div>
+        <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>Апрель 2026 · данные из базы</div>
       </div>
       <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
-        {kpiCard("Выручка месяца", fmtM(totalRevenue), `план 18 млн ₽`, "yellow", +8)}
-        {kpiCard("План выполнен", avgPlan + "%", "цель 100%", avgPlan >= 100 ? "green" : "yellow", -5)}
+        {kpiCard("Выручка месяца", fmtM(totalRevenue), "план 18 млн ₽", "yellow", +8)}
+        {kpiCard("Средний план", avgPlan + "%", "цель 100%", avgPlan >= 100 ? "green" : "yellow", -5)}
         {kpiCard("Сделок в работе", deals.length, `${stuckDeals.length} зависших`, "green", +12)}
-        {kpiCard("Менеджеров", managers.length, "активных", "green", 0)}
+        {kpiCard("Средний чек", deals.length ? fmt(Math.round(totalRevenue / deals.length)) : "—", "на сделку", "green", 0)}
       </div>
       <div style={{ display: "flex", gap: 16 }}>
         <div style={{ flex: 2 }}>
@@ -204,6 +378,7 @@ function Dashboard({ kpiCard, managers, deals }) {
   );
 }
 
+// ─── FUNNEL ─────────────────────────────────────────────────
 function FunnelScreen({ deals }) {
   const maxCount = funnelData[0].count;
   const stuckDeals = deals.filter(d => d.days >= 14);
@@ -211,7 +386,7 @@ function FunnelScreen({ deals }) {
     <div>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Воронка продаж</h1>
-        <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>Апрель 2026 · все менеджеры</div>
+        <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>Апрель 2026</div>
       </div>
       <div style={{ display: "flex", gap: 16 }}>
         <div style={{ flex: 2, background: "#fff", border: "1px solid #E8EEFF", borderRadius: 12, padding: 24 }}>
@@ -225,19 +400,23 @@ function FunnelScreen({ deals }) {
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{s.name}</div>
                     <div style={{ fontSize: 11, opacity: 0.8, marginTop: 2 }}>{s.count} сделок · {fmtM(s.sum)}</div>
                   </div>
-                  {nextConv !== null && <div style={{ fontSize: 11, color: "#888", padding: "4px 0" }}>↓ {nextConv}%</div>}
+                  {nextConv !== null && <div style={{ fontSize: 11, color: "#aaa", padding: "4px 0" }}>↓ {nextConv}%</div>}
                 </div>
               );
             })}
+          </div>
+          <div style={{ display: "flex", justifyContent: "center", gap: 24, marginTop: 20, fontSize: 12, color: "#888" }}>
+            <span>Конверсия: <b style={{ color: "#0A0A0A" }}>14,3%</b></span>
+            <span>Средний цикл: <b style={{ color: "#0A0A0A" }}>28 дней</b></span>
           </div>
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 12, padding: 18 }}>
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14, color: "#444" }}>Застрявшие сделки</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {stuckDeals.length === 0 && <div style={{ fontSize: 13, color: "#aaa" }}>Нет застрявших сделок</div>}
-              {stuckDeals.map(d => (
-                <div key={d.id} style={{ paddingBottom: 10, borderBottom: "1px solid #F0F4FF" }}>
+            {stuckDeals.length === 0
+              ? <div style={{ fontSize: 13, color: "#aaa" }}>Нет застрявших сделок 🎉</div>
+              : stuckDeals.map(d => (
+                <div key={d.id} style={{ paddingBottom: 10, marginBottom: 10, borderBottom: "1px solid #F0F4FF" }}>
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{d.name}</div>
                   <div style={{ fontSize: 11, color: "#888" }}>{d.client}</div>
                   <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5 }}>
@@ -245,8 +424,8 @@ function FunnelScreen({ deals }) {
                     <span style={{ fontSize: 12, fontWeight: 700 }}>{fmt(d.sum)}</span>
                   </div>
                 </div>
-              ))}
-            </div>
+              ))
+            }
           </div>
         </div>
       </div>
@@ -254,6 +433,7 @@ function FunnelScreen({ deals }) {
   );
 }
 
+// ─── DEALS ──────────────────────────────────────────────────
 function DealsScreen({ filteredDeals, stageFilter, setStageFilter, mgrFilter, setMgrFilter, search, setSearch, sortDeals, setSortDeals, managers, deals }) {
   const mgrNames = ["Все", ...Array.from(new Set(managers.map(m => m.name)))];
   const selStyle = { fontSize: 12, padding: "6px 10px", border: "1px solid #E8EEFF", borderRadius: 8, background: "#fff", color: "#333", cursor: "pointer" };
@@ -262,7 +442,7 @@ function DealsScreen({ filteredDeals, stageFilter, setStageFilter, mgrFilter, se
     <div>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Сделки</h1>
-        <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>Апрель 2026 · {filteredDeals.length} из {deals.length}</div>
+        <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>{filteredDeals.length} из {deals.length}</div>
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ position: "relative" }}>
@@ -278,9 +458,7 @@ function DealsScreen({ filteredDeals, stageFilter, setStageFilter, mgrFilter, se
         </select>
         <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
           {[["sum", "По сумме"], ["days", "По дням"]].map(([val, label]) => (
-            <button key={val} onClick={() => setSortDeals(val)} style={{ fontSize: 12, padding: "6px 12px", border: "1px solid #E8EEFF", borderRadius: 8, background: sortDeals === val ? ACCENT : "#fff", color: sortDeals === val ? "#fff" : "#555", cursor: "pointer" }}>
-              {label}
-            </button>
+            <button key={val} onClick={() => setSortDeals(val)} style={{ fontSize: 12, padding: "6px 12px", border: "1px solid #E8EEFF", borderRadius: 8, background: sortDeals === val ? ACCENT : "#fff", color: sortDeals === val ? "#fff" : "#555", cursor: "pointer" }}>{label}</button>
           ))}
         </div>
       </div>
@@ -288,13 +466,13 @@ function DealsScreen({ filteredDeals, stageFilter, setStageFilter, mgrFilter, se
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ background: "#F4F7FF" }}>
-              {["Название", "Клиент", "Сумма", "Стадия", "Ответственный", "Дней", ""].map((h, i) => (
+              {["Название", "Клиент", "Сумма", "Стадия", "Менеджер", "Дней", "Статус"].map((h, i) => (
                 <th key={i} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, color: "#999", fontWeight: 600, borderBottom: "1px solid #E8EEFF" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {filteredDeals.map((d) => (
+            {filteredDeals.map(d => (
               <tr key={d.id} style={{ borderBottom: "1px solid #F0F4FF" }}>
                 <td style={{ padding: "10px 14px", fontWeight: 600 }}>{d.name}</td>
                 <td style={{ padding: "10px 14px", color: "#666" }}>{d.client}</td>
@@ -316,6 +494,7 @@ function DealsScreen({ filteredDeals, stageFilter, setStageFilter, mgrFilter, se
   );
 }
 
+// ─── MANAGERS ───────────────────────────────────────────────
 function ManagersScreen({ managers }) {
   const sorted = [...managers].sort((a, b) => b.revenue - a.revenue);
   const statusLabel = { green: "норма", yellow: "внимание", red: "действие" };
@@ -324,7 +503,7 @@ function ManagersScreen({ managers }) {
     <div>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Менеджеры</h1>
-        <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>Апрель 2026 · {managers.length} человек · из Supabase</div>
+        <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>{managers.length} человек</div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
         {sorted.map((m, i) => (
@@ -361,13 +540,14 @@ function ManagersScreen({ managers }) {
   );
 }
 
+// ─── AI ─────────────────────────────────────────────────────
 function AIScreen({ localChat, chatInput, setChatInput, chatRef }) {
-  const quickBtns = ["Разобрать вчерашний день", "Кто в зоне риска?", "Что с воронкой?", "Прогноз до конца месяца"];
+  const quickBtns = ["Кто в зоне риска?", "Что с воронкой?", "Прогноз до конца месяца"];
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 56px)", maxWidth: 700, margin: "0 auto" }}>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>AI-ассистент</h1>
-        <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>Анализирует данные ТД Восток · Апрель 2026</div>
+        <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>Анализирует данные · Апрель 2026</div>
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
         {quickBtns.map(q => (
@@ -377,17 +557,12 @@ function AIScreen({ localChat, chatInput, setChatInput, chatRef }) {
       <div ref={chatRef} style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 14, paddingBottom: 8 }}>
         {localChat.map((msg, i) => (
           <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
-            {msg.role === "ai" && (
-              <div style={{ width: 30, height: 30, borderRadius: 10, background: "#EEF3FF", display: "flex", alignItems: "center", justifyContent: "center", marginRight: 8, flexShrink: 0, marginTop: 2 }}>
-                <Bot size={16} color={ACCENT} />
-              </div>
-            )}
             <div style={{ maxWidth: "80%", padding: "10px 14px", borderRadius: 12, fontSize: 13, lineHeight: 1.6, background: msg.role === "user" ? ACCENT : "#fff", color: msg.role === "user" ? "#fff" : "#0A0A0A", border: msg.role === "ai" ? "1px solid #E8EEFF" : "none", whiteSpace: "pre-line" }}>{msg.text}</div>
           </div>
         ))}
       </div>
       <div style={{ display: "flex", gap: 8, paddingTop: 12, borderTop: "1px solid #E8EEFF" }}>
-        <input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Спросите что-нибудь о ваших продажах..." style={{ flex: 1, fontSize: 13, padding: "10px 14px", border: "1px solid #E8EEFF", borderRadius: 10, outline: "none", color: "#333" }} />
+        <input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Задайте вопрос о продажах..." style={{ flex: 1, fontSize: 13, padding: "10px 14px", border: "1px solid #E8EEFF", borderRadius: 10, outline: "none" }} />
         <button style={{ padding: "10px 20px", background: ACCENT, color: "#fff", border: "none", borderRadius: 10, fontSize: 13, cursor: "pointer", fontWeight: 600 }}>Отправить</button>
       </div>
     </div>
