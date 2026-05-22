@@ -119,13 +119,18 @@ function AuthScreen({ setUser, onLoadData }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [msg, setMsg] = useState({ text: "", type: "" });
+  const [passwordError, setPasswordError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const showMsg = (text, type = "error") => setMsg({ text, type });
 
+  // Баг 4: кнопка задизейблена если есть ошибки валидации
+  const isRegisterDisabled = !!passwordError || !email || !password || !confirm;
+
   async function handleLogin(e) {
     e.preventDefault();
     if (!email || !password) return showMsg("Введите email и пароль");
+    setMsg({ text: "", type: "" }); // Баг 3: сброс ошибки при новой попытке
     setLoading(true);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
@@ -144,7 +149,13 @@ function AuthScreen({ setUser, onLoadData }) {
     if (pwdErr) return showMsg(pwdErr);
     if (password !== confirm) return showMsg("Пароли не совпадают");
     setLoading(true);
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: 'https://incandescent-quokka-28174c.netlify.app'
+      }
+    });
     setLoading(false);
     if (error) {
       const friendlyMsg = translateError(error);
@@ -200,7 +211,7 @@ function AuthScreen({ setUser, onLoadData }) {
             <label style={{ fontSize: 12, color: "#666", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
               <Mail size={13} /> Email
             </label>
-            <input value={email} onChange={e => setEmail(e.target.value)} placeholder="your@email.com" style={inputStyle} />
+            <input value={email} onChange={e => { setEmail(e.target.value); setMsg({ text: "", type: "" }); }} placeholder="your@email.com" style={inputStyle} />
           </div>
 
           {mode !== "reset" && (
@@ -208,8 +219,18 @@ function AuthScreen({ setUser, onLoadData }) {
               <label style={{ fontSize: 12, color: "#666", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
                 <Lock size={13} /> Пароль
               </label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" style={inputStyle} />
-              {mode === "register" && (
+              <input type="password" value={password} onChange={e => {
+                setPassword(e.target.value);
+                // Баг 2: сброс ошибки если пароль стал валидным
+                if (!validatePassword(e.target.value)) setPasswordError("");
+                else setPasswordError(validatePassword(e.target.value) || "");
+              }} placeholder="••••••••" style={inputStyle} />
+              {mode === "register" && passwordError && (
+                <div style={{ fontSize: 11, color: "#B3001F", marginTop: 5, fontWeight: 500 }}>
+                  {passwordError}
+                </div>
+              )}
+              {mode === "register" && !passwordError && (
                 <div style={{ fontSize: 11, color: "#aaa", marginTop: 5 }}>
                   8+ символов · заглавная буква · цифра · спецсимвол (!@#$%^&*)
                 </div>
@@ -234,8 +255,8 @@ function AuthScreen({ setUser, onLoadData }) {
 
           <button
             onClick={mode === "login" ? handleLogin : mode === "register" ? handleRegister : handleReset}
-            disabled={loading}
-            style={{ padding: "12px 0", background: ACCENT, color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", opacity: loading ? 0.7 : 1 }}>
+            disabled={loading || (mode === "register" && isRegisterDisabled)}
+            style={{ padding: "12px 0", background: ACCENT, color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: (loading || (mode === "register" && isRegisterDisabled)) ? "not-allowed" : "pointer", opacity: (loading || (mode === "register" && isRegisterDisabled)) ? 0.5 : 1 }}>
             {loading ? "Загрузка..." : mode === "login" ? "Войти" : mode === "register" ? "Зарегистрироваться" : "Отправить ссылку"}
           </button>
 
