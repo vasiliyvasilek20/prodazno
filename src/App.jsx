@@ -42,6 +42,59 @@ const validatePassword = (pwd) => {
   return null;
 };
 
+const translateError = (error) => {
+  if (!error) return "Ошибка при выполнении операции";
+  
+  const msg = error.message || "";
+  
+  // 429 — слишком много попыток
+  if (msg.includes("429") || msg.includes("Too Many Requests")) {
+    return "Слишком много попыток. Пожалуйста, подождите перед следующей попыткой.";
+  }
+  
+  // Invalid email
+  if (msg.includes("invalid email") || msg.includes("Invalid email")) {
+    return "Этот email-адрес недействителен. Пожалуйста, проверьте адрес и попробуйте снова.";
+  }
+  
+  // Email already exists
+  if (msg.includes("already exists") || msg.includes("duplicate key")) {
+    return "Этот email уже зарегистрирован. Попробуйте войти или используйте другой адрес.";
+  }
+  
+  // Password too short
+  if (msg.includes("password") && msg.includes("short")) {
+    return "Пароль недостаточно длинный. Минимум 8 символов.";
+  }
+  
+  // Invalid credentials
+  if (msg.includes("Invalid login credentials") || msg.includes("invalid credentials")) {
+    return "Неверный email или пароль. Пожалуйста, попробуйте снова.";
+  }
+  
+  // Email not confirmed
+  if (msg.includes("Email not confirmed")) {
+    return "Пожалуйста, подтвердите ваш email перед входом. Проверьте почту.";
+  }
+  
+  // User not found
+  if (msg.includes("User not found")) {
+    return "Пользователь не найден. Пожалуйста, зарегистрируйтесь.";
+  }
+  
+  // Default translation for common errors
+  if (msg.includes("network") || msg.includes("connection")) {
+    return "Ошибка подключения. Проверьте интернет и попробуйте снова.";
+  }
+  
+  // Fallback: show original error if it looks like a user-friendly message
+  if (msg.length < 100 && !msg.includes("PostgreSQL")) {
+    return msg;
+  }
+  
+  return "Ошибка при выполнении операции. Пожалуйста, попробуйте снова.";
+};
+
 const statusDot = (status) => {
   const bg = status === "green" ? COLORS.green : status === "yellow" ? COLORS.yellow : COLORS.red;
   return <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: bg, flexShrink: 0 }} />;
@@ -76,7 +129,10 @@ function AuthScreen({ setUser, onLoadData }) {
     setLoading(true);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
-    if (error) return showMsg("Неверный email или пароль");
+    if (error) {
+      const friendlyMsg = translateError(error);
+      return showMsg(friendlyMsg);
+    }
     setUser(data.user);
     onLoadData(data.user.id);
   }
@@ -90,9 +146,13 @@ function AuthScreen({ setUser, onLoadData }) {
     setLoading(true);
     const { error } = await supabase.auth.signUp({ email, password });
     setLoading(false);
-    if (error) return showMsg(error.message);
+    if (error) {
+      const friendlyMsg = translateError(error);
+      return showMsg(friendlyMsg);
+    }
     showMsg("Письмо подтверждения отправлено! Проверьте почту.", "success");
-    setPassword(""); setConfirm("");
+    setPassword(""); 
+    setConfirm("");
   }
 
   async function handleReset(e) {
@@ -103,7 +163,10 @@ function AuthScreen({ setUser, onLoadData }) {
       redirectTo: window.location.origin,
     });
     setLoading(false);
-    if (error) return showMsg(error.message);
+    if (error) {
+      const friendlyMsg = translateError(error);
+      return showMsg(friendlyMsg);
+    }
     showMsg("Ссылка для сброса пароля отправлена на почту!", "success");
   }
 
