@@ -121,8 +121,7 @@ function AuthScreen({ setUser, onLoadData }) {
   const [msg, setMsg] = useState({ text: "", type: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [passwordError, setPasswordError] = useState("");
+    const [passwordError, setPasswordError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const showMsg = (text, type = "error") => setMsg({ text, type });
