@@ -248,7 +248,7 @@ function AuthScreen({ setUser, onLoadData }) {
             <div>
               <label style={{ fontSize: 12, color: "#666", marginBottom: 6, display: "block" }}>Подтверждение пароля</label>
               <div style={{ position: "relative" }}>
-              <input type={showConfirm ? "text" : "password"} value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="••••••••" style={{...inputStyle, paddingRight: 40}} />
+              <input type={showConfirm ? "text" : "password"} value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Повторите пароль" style={{...inputStyle, paddingRight: 40}} />
               <button type="button" onClick={() => setShowConfirm(!showConfirm)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#888", display: "flex", alignItems: "center", padding: 0 }}>
                 {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
