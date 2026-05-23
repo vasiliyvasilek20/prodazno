@@ -109,7 +109,7 @@ const Badge = ({ status, label }) => {
 const inputStyle = {
   width: "100%", padding: "10px 12px", border: "1.5px solid #E8EEFF",
   borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box",
-  fontFamily: "Onest, sans-serif", color: "#0A0A0A",
+  fontFamily: "Onest, sans-serif", color: "#0A0A0A", background: "#fff",
 };
 
 // ─── AUTH SCREEN ────────────────────────────────────────────
@@ -120,6 +120,7 @@ function AuthScreen({ setUser, onLoadData }) {
   const [confirm, setConfirm] = useState("");
   const [msg, setMsg] = useState({ text: "", type: "" });
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [passwordError, setPasswordError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -213,7 +214,7 @@ function AuthScreen({ setUser, onLoadData }) {
             <label style={{ fontSize: 12, color: "#666", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
               <Mail size={13} /> Email
             </label>
-            <input value={email} onChange={e => { setEmail(e.target.value); setMsg({ text: "", type: "" }); }} placeholder="your@email.com" style={inputStyle} />
+            <input value={email} onChange={e => { setEmail(e.target.value); setMsg({ text: "", type: "" }); }} placeholder="Введите email" style={inputStyle} />
           </div>
 
           {mode !== "reset" && (
@@ -226,8 +227,8 @@ function AuthScreen({ setUser, onLoadData }) {
                 setPassword(e.target.value);
                 const _err = validatePassword(e.target.value);
                 setPasswordError(_err || "");
-              }} placeholder="••••••••" style={{...inputStyle, paddingRight: 40}} />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#888", display: "flex", alignItems: "center", padding: 0 }}>
+              }} placeholder="Придумайте пароль" style={{...inputStyle, paddingRight: 40}} />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#aaa", display: "flex", alignItems: "center", padding: 0 }}>
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
