@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { LayoutDashboard, Filter, Users, Bot, TrendingUp, AlertCircle, CheckCircle, Clock, Search, LogOut, Mail, Lock } from "lucide-react";
+import { LayoutDashboard, Filter, Users, Bot, TrendingUp, AlertCircle, CheckCircle, Clock, Search, LogOut, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { supabase } from "./supabase";
 
 const ACCENT = "#005BFF";
@@ -38,7 +38,7 @@ const validatePassword = (pwd) => {
   if (pwd.length < 8) return "Минимум 8 символов";
   if (!/[A-Z]/.test(pwd)) return "Нужна хотя бы одна заглавная буква";
   if (!/[0-9]/.test(pwd)) return "Нужна хотя бы одна цифра";
-  if (!/[!@#$%^&*]/.test(pwd)) return "Нужен спецсимвол: !@#$%^&*";
+  if (!/[!@#$%^&*._\-]/.test(pwd)) return "Нужен спецсимвол: !@#$%^&*._-";
   return null;
 };
 
@@ -119,6 +119,7 @@ function AuthScreen({ setUser, onLoadData }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [msg, setMsg] = useState({ text: "", type: "" });
+  const [showPassword, setShowPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -147,7 +148,7 @@ function AuthScreen({ setUser, onLoadData }) {
     if (!email) return showMsg("Введите email");
     const pwdErr = validatePassword(password);
     if (pwdErr) return showMsg(pwdErr);
-    if (password !== confirm) return showMsg("Пароли не совпадают");
+    if (password.trim() !== confirm.trim()) return showMsg("Пароли не совпадают");
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email,
@@ -219,12 +220,16 @@ function AuthScreen({ setUser, onLoadData }) {
               <label style={{ fontSize: 12, color: "#666", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
                 <Lock size={13} /> Пароль
               </label>
-              <input type="password" value={password} onChange={e => {
+              <div style={{ position: "relative" }}>
+              <input type={showPassword ? "text" : "password"} value={password} onChange={e => {
                 setPassword(e.target.value);
-                // Баг 2: сброс ошибки если пароль стал валидным
-                if (!validatePassword(e.target.value)) setPasswordError("");
-                else setPasswordError(validatePassword(e.target.value) || "");
-              }} placeholder="••••••••" style={inputStyle} />
+                const _err = validatePassword(e.target.value);
+                setPasswordError(_err || "");
+              }} placeholder="••••••••" style={{...inputStyle, paddingRight: 40}} />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#888", display: "flex", alignItems: "center", padding: 0 }}>
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
               {mode === "register" && passwordError && (
                 <div style={{ fontSize: 11, color: "#B3001F", marginTop: 5, fontWeight: 500 }}>
                   {passwordError}
